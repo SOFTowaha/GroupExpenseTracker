@@ -252,8 +252,9 @@ def report():
             debtors.append({"person": p, "amount": -bal})
 
     # sort creditors descending, debtors descending (largest debt first)
-    creditors.sort(key=lambda x: x["amount"], reverse=False)
-    debtors.sort(key=lambda x: x["amount"], reverse=False)
+    # Prefer matching largest amounts first to reduce small cross-payments
+    creditors.sort(key=lambda x: x["amount"], reverse=True)
+    debtors.sort(key=lambda x: x["amount"], reverse=True)
 
     payments = []
 
