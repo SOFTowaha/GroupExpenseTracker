@@ -78,13 +78,25 @@ def add_expense():
     amount = payload.get("amount")
     description = payload.get("description", "")
     date = payload.get("date", "")
+    split = payload.get("split")
     if payer not in data.get("participants", []):
         return jsonify({"ok": False, "error": "payer not in participants"}), 400
     try:
         amt = quant(to_decimal(amount))
     except Exception:
         return jsonify({"ok": False, "error": "invalid amount"}), 400
-    expense = {"id": str(uuid4()), "payer": payer, "amount": float(amt), "description": description, "date": date}
+    # normalize split: if not provided or empty, default to all participants
+    parts = data.get("participants", [])
+    if not split:
+        split = parts.copy()
+    else:
+        # filter invalid participants
+        split = [s for s in split if s in parts]
+        if not split:
+            # fallback to all
+            split = parts.copy()
+
+    expense = {"id": str(uuid4()), "payer": payer, "amount": float(amt), "description": description, "date": date, "split": split}
     data.setdefault("expenses", []).append(expense)
     save_data(data)
     return jsonify({"ok": True, "expense": expense})
@@ -101,6 +113,7 @@ def edit_expense(eid):
             amount = payload.get("amount", e.get("amount"))
             description = payload.get("description", e.get("description"))
             date = payload.get("date", e.get("date"))
+            split = payload.get("split", e.get("split"))
             if payer not in data.get("participants", []):
                 return jsonify({"ok": False, "error": "payer not in participants"}), 400
             try:
@@ -111,6 +124,15 @@ def edit_expense(eid):
             e["amount"] = float(amt)
             e["description"] = description
             e["date"] = date
+            # validate split
+            parts = data.get("participants", [])
+            if not split:
+                split = parts.copy()
+            else:
+                split = [s for s in split if s in parts]
+                if not split:
+                    split = parts.copy()
+            e["split"] = split
             save_data(data)
             return jsonify({"ok": True, "expense": e})
     return jsonify({"ok": False, "error": "not found"}), 404
@@ -246,23 +268,32 @@ def report():
     total_all = quant(total_all)
     total_cents = int((total_all * Decimal('100')).to_integral_value(rounding=ROUND_HALF_UP))
 
-    # Per-head integer cents, distribute remainder deterministically by participant name order
-    per_head_cents = total_cents // n
-    remainder = total_cents % n
-    ordered = sorted(participants)
     # Build paid/share/balance in cents
     paid_cents = {}
     for p in participants:
         p_total = quant(totals.get(p, Decimal('0.00')))
         paid_cents[p] = int((p_total * Decimal('100')).to_integral_value(rounding=ROUND_HALF_UP))
 
-    share_cents = {}
-    for idx, p in enumerate(ordered):
-        extra = 1 if idx < remainder else 0
-        share_cents[p] = per_head_cents + extra
+    # Compute each participant's share from each expense (integer-cent deterministic split)
+    share_cents = {p: 0 for p in participants}
+    for e in expenses:
+        amt = quant(to_decimal(e.get("amount", 0)))
+        amt_cents = int((amt * Decimal('100')).to_integral_value(rounding=ROUND_HALF_UP))
+        split = e.get("split") or participants
+        # ensure split members are valid and in deterministic order
+        split_members = [s for s in split if s in participants]
+        if not split_members:
+            split_members = participants[:]
+        k = len(split_members)
+        base = amt_cents // k
+        rem = amt_cents % k
+        ordered_split = sorted(split_members)
+        for idx, member in enumerate(ordered_split):
+            add = base + (1 if idx < rem else 0)
+            share_cents[member] += add
 
     # compute balances in cents: positive means person is creditor (is owed money)
-    balances_cents = {p: paid_cents.get(p, 0) - share_cents.get(p, per_head_cents) for p in participants}
+    balances_cents = {p: paid_cents.get(p, 0) - share_cents.get(p, 0) for p in participants}
 
     # Prepare creditors and debtors (amounts positive ints)
     creditors = []
@@ -293,54 +324,17 @@ def report():
             j += 1
 
     # Build summary (convert cents back to dollars)
+    total = float(Decimal(total_cents) / Decimal('100'))
+    per_head = float(Decimal(total_cents) / Decimal(n) / Decimal('100'))
+
     summary = {}
     for p in participants:
         paid = float(Decimal(paid_cents.get(p, 0)) / Decimal('100'))
-        share = float(Decimal(share_cents.get(p, per_head_cents)) / Decimal('100'))
+        share = float(Decimal(share_cents.get(p, 0)) / Decimal('100'))
         balance = float(Decimal(balances_cents.get(p, 0)) / Decimal('100'))
         summary[p] = {"paid": paid, "share": share, "balance": balance}
 
-    per_head = float(Decimal(per_head_cents) / Decimal('100'))
-    total = float(Decimal(total_cents) / Decimal('100'))
-
     return jsonify({"ok": True, "total": total, "per_head": per_head, "summary": summary, "payments": payments})
-
-    # Prepare creditors and debtors
-    creditors = []
-    debtors = []
-    for p, bal in balances.items():
-        if bal > 0:
-            creditors.append({"person": p, "amount": bal})
-        elif bal < 0:
-            debtors.append({"person": p, "amount": -bal})
-
-    # sort creditors descending, debtors descending (largest debt first)
-    # Prefer matching largest amounts first to reduce small cross-payments
-    creditors.sort(key=lambda x: x["amount"], reverse=True)
-    debtors.sort(key=lambda x: x["amount"], reverse=True)
-
-    payments = []
-
-    # Greedy match: smallest positive with smallest negative
-    i = 0
-    j = 0
-    while i < len(debtors) and j < len(creditors):
-        d = debtors[i]
-        c = creditors[j]
-        take = min(d["amount"], c["amount"])
-        take = quant(take)
-        payments.append({"from": d["person"], "to": c["person"], "amount": float(take)})
-        d["amount"] = quant(d["amount"] - take)
-        c["amount"] = quant(c["amount"] - take)
-        if d["amount"] == Decimal('0.00'):
-            i += 1
-        if c["amount"] == Decimal('0.00'):
-            j += 1
-
-    # Build summary
-    summary = {p: {"paid": float(quant(totals[p])), "share": float(per_head), "balance": float(balances[p])} for p in participants}
-
-    return jsonify({"ok": True, "total": float(quant(total_all)), "per_head": float(per_head), "summary": summary, "payments": payments})
 
 
 if __name__ == "__main__":

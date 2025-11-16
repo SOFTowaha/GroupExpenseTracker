@@ -2,33 +2,84 @@
   "participants": [
     "Sadia",
     "Shorup",
+    "Harish",
     "Beauty",
-    "Haris",
+    "Misbah",
     "Syed"
   ],
   "expenses": [
     {
-      "id": "035b4e20-77a2-4ef4-b1fb-e73054f7a04e",
+      "id": "91f71b56-9e1e-4912-83be-0e3d1d71e40a",
       "payer": "Shorup",
       "amount": 9.78,
-      "description": "Dollarama ",
-      "date": "2025-11-15"
+      "description": "Dollarama",
+      "date": "2025-11-15",
+      "split": [
+        "Sadia",
+        "Shorup",
+        "Haris",
+        "Beauty",
+        "Syed"
+      ]
     },
     {
-      "id": "6064a281-44cf-4a76-b0fc-1077cb2587b4",
+      "id": "5a1eaf74-c8b8-46ab-8487-73155d37d0e4",
       "payer": "Shorup",
       "amount": 2.48,
-      "description": "Fanta - wholesale",
-      "date": "2025-11-15"
+      "description": "Fanta - Wholesale",
+      "date": "2025-11-15",
+      "split": [
+        "Sadia",
+        "Shorup",
+        "Haris",
+        "Beauty",
+        "Syed"
+      ]
     },
     {
-      "id": "dabcccd3-dead-45d9-ba5e-e71ad87d90e4",
-      "payer": "Haris",
+      "id": "a957ca6d-331c-449d-a781-402d51d3c789",
+      "payer": "Harish",
       "amount": 18.5,
-      "description": "Dollarama + Cake",
-      "date": "2025-11-15"
+      "description": "Cake+dollarama",
+      "date": "2025-11-15",
+      "split": [
+        "Sadia",
+        "Shorup",
+        "Haris",
+        "Beauty",
+        "Syed"
+      ]
+    },
+    {
+      "id": "2202c499-1bbd-4cc2-a3ac-0f8c15eb8509",
+      "payer": "Beauty",
+      "amount": 25.27,
+      "description": "Perfume/gift",
+      "date": "2025-11-15",
+      "split": [
+        "Sadia",
+        "Shorup",
+        "Haris",
+        "Beauty",
+        "Syed"
+      ]
+    },
+    {
+      "id": "4d703336-cb6b-4e0b-a676-d3658bca6c7a",
+      "payer": "Syed",
+      "amount": 45.99,
+      "description": "Poker Game",
+      "date": "2025-11-15",
+      "split": [
+        "Sadia",
+        "Shorup",
+        "Harish",
+        "Beauty",
+        "Misbah",
+        "Syed"
+      ]
     }
   ],
-  "event": "Misbah's Birthday Party",
-  "currency": "INR"
+  "event": "Misbah's Birthday Party & Poker Game",
+  "currency": "CAD"
 }

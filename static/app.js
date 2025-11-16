@@ -74,6 +74,37 @@ async function refreshData () {
     payerSelect.appendChild (opt);
   });
 
+  // populate split selector (checkboxes) for add-expense form
+  const splitDiv = el ('splitSelect');
+  if (splitDiv) {
+    splitDiv.innerHTML = '';
+    parts.forEach (p => {
+      const id = `split_${p.replace (/\s+/g, '_')}`;
+      const wrapper = document.createElement ('label');
+      wrapper.className = 'inline-flex items-center gap-2 text-sm mr-2';
+      wrapper.innerHTML = `<input type="checkbox" id="${id}" class="split-checkbox" value="${p}" checked /> <span>${p}</span>`;
+      splitDiv.appendChild (wrapper);
+    });
+  }
+
+  // wire Select All / Clear buttons for split selector
+  const selectAllBtn = el ('selectAllSplit');
+  const clearBtn = el ('clearSplit');
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener ('click', () => {
+      document
+        .querySelectorAll ('#splitSelect input[type=checkbox]')
+        .forEach (cb => (cb.checked = true));
+    });
+  }
+  if (clearBtn) {
+    clearBtn.addEventListener ('click', () => {
+      document
+        .querySelectorAll ('#splitSelect input[type=checkbox]')
+        .forEach (cb => (cb.checked = false));
+    });
+  }
+
   const expenses = data.expenses || [];
   const elExp = el ('expensesList');
   if (!expenses.length)
@@ -83,20 +114,24 @@ async function refreshData () {
     elExp.innerHTML =
       '<div class="space-y-2">' +
       expenses
-        .map (
-          e => `
-      <div class="flex items-start justify-between p-2 border rounded">
-        <div>
-          <div class="text-sm text-gray-700">${e.date || ''} — <strong>${e.payer}</strong>: ${parseFloat (e.amount).toFixed (2)}</div>
-          <div class="text-xs text-gray-500">${e.description || ''}</div>
+        .map (e => {
+          const splitInfo = e.split && e.split.length
+            ? `<div class="text-xs text-gray-500">Split: ${e.split.join (', ')}</div>`
+            : '';
+          return `
+        <div class="flex items-start justify-between p-2 border rounded">
+          <div>
+            <div class="text-sm text-gray-700">${e.date || ''} — <strong>${e.payer}</strong>: ${parseFloat (e.amount).toFixed (2)}</div>
+            <div class="text-xs text-gray-500">${e.description || ''}</div>
+            ${splitInfo}
+          </div>
+          <div class="flex gap-2">
+            <button data-id="${e.id || ''}" class="edit-expense px-2 py-0.5 bg-yellow-300 rounded text-xs">Edit</button>
+            <button data-id="${e.id || ''}" class="delete-expense px-2 py-0.5 bg-red-500 text-white rounded text-xs">Delete</button>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <button data-id="${e.id || ''}" class="edit-expense px-2 py-0.5 bg-yellow-300 rounded text-xs">Edit</button>
-          <button data-id="${e.id || ''}" class="delete-expense px-2 py-0.5 bg-red-500 text-white rounded text-xs">Delete</button>
-        </div>
-      </div>
-    `
-        )
+      `;
+        })
         .join ('') +
       '</div>';
   }
@@ -278,9 +313,20 @@ el ('addExpense').addEventListener ('click', async () => {
     showToast ('Enter a positive amount', 'error');
     return;
   }
+  // gather split members
+  const splitNodes = document.querySelectorAll (
+    '#splitSelect input[type=checkbox]:checked'
+  );
+  let split = Array.from (splitNodes).map (n => n.value);
+  if (!split || !split.length) {
+    // fallback to all participants
+    const data = await api ('/data');
+    split = (data.participants || []).slice ();
+  }
+
   await api ('/expense', {
     method: 'POST',
-    body: JSON.stringify ({payer, amount, description, date}),
+    body: JSON.stringify ({payer, amount, description, date, split}),
   });
   el ('amountInput').value = '';
   el ('descInput').value = '';
@@ -369,6 +415,11 @@ function openModal (type, data) {
         <label class="label">Date</label>
         <div class="control date-wrap"><input id="modalDate" type="text" class="input" /></div>
       </div>
+      <div class="field">
+        <label class="label">Split between</label>
+        <div id="modalSplit" class="control flex flex-wrap gap-2"></div>
+        <div class="text-xs text-gray-500 mt-1">Choose who shares this expense</div>
+      </div>
     `;
     // populate form after participants fetched
     parts.then (ps => {
@@ -386,6 +437,44 @@ function openModal (type, data) {
       el ('modalAmount').value = parseFloat (e.amount).toFixed (2);
       el ('modalDesc').value = e.description || '';
       el ('modalDate').value = e.date || '';
+      // populate modal split checkboxes
+      const ms = el ('modalSplit');
+      if (ms) {
+        ms.innerHTML = '';
+        const splitList = e.split || ps.slice ();
+        ps.forEach (p => {
+          const id = `modal_split_${p.replace (/\s+/g, '_')}`;
+          const wrapper = document.createElement ('label');
+          wrapper.className = 'inline-flex items-center gap-2 text-sm mr-2';
+          const checked = splitList.includes (p) ? 'checked' : '';
+          wrapper.innerHTML = `<input type="checkbox" id="${id}" class="modal-split-checkbox" value="${p}" ${checked} /> <span>${p}</span>`;
+          ms.appendChild (wrapper);
+        });
+      }
+      // add modal select all/clear buttons if not present
+      const modalControlsId = 'modalSplitControls';
+      if (!el (modalControlsId)) {
+        const container = document.createElement ('div');
+        container.id = modalControlsId;
+        container.className = 'flex items-center gap-2 mt-2';
+        container.innerHTML = `<button type="button" id="modalSelectAllSplit" class="btn btn-ghost text-sm">Select All</button><button type="button" id="modalClearSplit" class="btn btn-ghost text-sm">Clear</button>`;
+        ms.parentNode.appendChild (container);
+      }
+      // wire modal buttons
+      const modalSelectAll = el ('modalSelectAllSplit');
+      const modalClear = el ('modalClearSplit');
+      if (modalSelectAll)
+        modalSelectAll.addEventListener ('click', () => {
+          document
+            .querySelectorAll ('#modalSplit input[type=checkbox]')
+            .forEach (cb => (cb.checked = true));
+        });
+      if (modalClear)
+        modalClear.addEventListener ('click', () => {
+          document
+            .querySelectorAll ('#modalSplit input[type=checkbox]')
+            .forEach (cb => (cb.checked = false));
+        });
       // initialize flatpickr on modalDate
       if (window.flatpickr) {
         try {
@@ -439,9 +528,18 @@ modalForm.addEventListener ('submit', async function (ev) {
     const amount = el ('modalAmount').value;
     const description = el ('modalDesc').value;
     const date = el ('modalDate').value;
+    // collect split members from modal checkboxes
+    const splitNodes = document.querySelectorAll (
+      '#modalSplit input[type=checkbox]:checked'
+    );
+    let split = Array.from (splitNodes).map (n => n.value);
+    if (!split || !split.length) {
+      const d = await api ('/data');
+      split = (d.participants || []).slice ();
+    }
     const res = await api ('/expense/' + encodeURIComponent (id), {
       method: 'PUT',
-      body: JSON.stringify ({payer, amount, description, date}),
+      body: JSON.stringify ({payer, amount, description, date, split}),
     });
     if (!res || res.ok === false) {
       showToast (res.error || 'Failed', 'error');

@@ -88,6 +88,17 @@
                         <label class="label">Date</label>
                         <div class="control date-wrap"><input id="dateInput" type="date" class="input" /></div>
                     </div>
+                    <div class="col-span-2">
+                        <label class="label">Split between</label>
+                        <div class="flex items-center gap-2 mb-1">
+                            <div id="splitSelect" class="control flex flex-wrap gap-2"></div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <button id="selectAllSplit" type="button" class="btn btn-ghost text-sm">Select All</button>
+                            <button id="clearSplit" type="button" class="btn btn-ghost text-sm">Clear</button>
+                            <div class="text-xs text-gray-500">Select who shares this expense (default: everyone)</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="mt-3">
                     <button id="addExpense" class="btn btn-success">Add Expense</button>
