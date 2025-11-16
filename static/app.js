@@ -86,6 +86,32 @@ async function refreshData () {
   }
 }
 
+// Initialize Flatpickr for a nicer calendar UI and wire custom button
+document.addEventListener ('DOMContentLoaded', function () {
+  const dateEl = document.getElementById ('dateInput');
+  if (window.flatpickr && dateEl) {
+    flatpickr (dateEl, {
+      altInput: true,
+      altFormat: 'F j, Y',
+      dateFormat: 'Y-m-d',
+      allowInput: true,
+      clickOpens: true,
+      wrap: false,
+    });
+    // clicking the pseudo button should open the flatpickr calendar
+    const wrap = document.querySelector ('.date-wrap');
+    if (wrap && dateEl._flatpickr) {
+      wrap.addEventListener ('click', e => {
+        // if user clicked on input itself, let default happen
+        if (e.target === dateEl) return;
+        try {
+          dateEl._flatpickr.open ();
+        } catch (err) {}
+      });
+    }
+  }
+});
+
 el ('saveParticipants').addEventListener ('click', async () => {
   const raw = el ('participantsInput').value;
   const names = raw.split (/\n|,/).map (s => s.trim ()).filter (Boolean);
@@ -225,9 +251,27 @@ el ('computeReport').addEventListener ('click', async () => {
     area.innerHTML = `<div class="error">${r.error || 'Error'}</div>`;
     return;
   }
-  let html = `<p><strong>Total:</strong> ${r.total.toFixed (2)} — <strong>Per head:</strong> ${r.per_head.toFixed (2)}</p>`;
+  const eventName = el ('eventInput') && el ('eventInput').value
+    ? el ('eventInput').value.trim ()
+    : '';
+
+  // Build a friendly description
+  const title = eventName ? `${eventName} — Settlement` : 'Settlement Summary';
+  const summaryText = `Total: ${r.total.toFixed (2)} | Per head: ${r.per_head.toFixed (2)}`;
+
+  let html = `<div class="report-card">
+    <div class="report-header">
+      <div>
+        <div class="font-semibold">${title}</div>
+        <div class="text-xs text-gray-500">${summaryText}</div>
+      </div>
+      <div class="report-actions"></div>
+    </div>`;
+
+  html += '<div class="report-summary">';
+  html += '<h3 class="mt-2">Summary</h3>';
   html +=
-    '<h3>Summary</h3><ul>' +
+    '<ul class="report-list">' +
     Object.entries (r.summary)
       .map (
         ([p, s]) =>
@@ -235,17 +279,70 @@ el ('computeReport').addEventListener ('click', async () => {
       )
       .join ('') +
     '</ul>';
-  if (r.payments.length === 0)
-    html += '<p>All settled — no payments needed.</p>';
-  else
+
+  if (!r.payments || r.payments.length === 0) {
+    html += '<p class="mt-3">All settled — no payments needed.</p>';
+  } else {
+    html += '<h3 class="mt-3">Payments</h3>';
     html +=
-      '<h3>Payments</h3><ul>' +
+      '<ul class="report-list">' +
       r.payments
-        .map (p => `<li>${p.from} -> ${p.to}: ${p.amount.toFixed (2)}</li>`)
+        .map (p => `<li>${p.from} → ${p.to}: ${p.amount.toFixed (2)}</li>`)
         .join ('') +
       '</ul>';
+  }
+
+  html += '</div></div>';
   area.innerHTML = html;
+
+  // Also prepare a plain-text version for clipboard
+  let txt = `${title}\n${summaryText}\n\nSummary:\n`;
+  txt += Object.entries (r.summary)
+    .map (
+      ([p, s]) =>
+        `${p}: paid ${s.paid.toFixed (2)}, share ${s.share.toFixed (2)}, balance ${s.balance.toFixed (2)}`
+    )
+    .join ('\n');
+  txt += '\n\n';
+  if (!r.payments || r.payments.length === 0)
+    txt += 'All settled — no payments needed.\n';
+  else
+    txt +=
+      'Payments:\n' +
+      r.payments
+        .map (p => `${p.from} -> ${p.to}: ${p.amount.toFixed (2)}`)
+        .join ('\n') +
+      '\n';
+
+  // store generated text on copy button for use by clipboard action
+  const copyBtn = el ('copyReport');
+  if (copyBtn) {
+    copyBtn.dataset.cliptext = txt;
+    // reset state
+    copyBtn.classList.remove ('copied');
+    el ('copyLabel').textContent = 'Copy';
+  }
 });
+
+// clipboard copy handler
+if (el ('copyReport')) {
+  el ('copyReport').addEventListener ('click', async ev => {
+    const btn = ev.currentTarget;
+    const text = btn.dataset.cliptext || '';
+    if (!text) return alert ('Nothing to copy — generate the report first');
+    try {
+      await navigator.clipboard.writeText (text);
+      btn.classList.add ('copied');
+      el ('copyLabel').textContent = 'Copied';
+      setTimeout (() => {
+        btn.classList.remove ('copied');
+        el ('copyLabel').textContent = 'Copy';
+      }, 2400);
+    } catch (err) {
+      alert ('Copy failed — your browser may block clipboard access.');
+    }
+  });
+}
 
 // initial load
 refreshData ().catch (e => console.error (e));

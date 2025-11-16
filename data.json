@@ -1,8 +1,26 @@
 {
   "participants": [
-    "ji",
-    "she",
-    "me"
+    "john",
+    "jenny",
+    "syed",
+    "Lia",
+    "maria",
+    "maysoon"
   ],
-  "expenses": []
+  "expenses": [
+    {
+      "id": "dab2b766-3302-4d4a-aea7-d020e9b325fb",
+      "payer": "syed",
+      "amount": 23.0,
+      "description": "tent",
+      "date": "2025-11-11"
+    },
+    {
+      "id": "8897e456-fd15-4451-80f8-c2c58ac9802a",
+      "payer": "Lia",
+      "amount": 344.0,
+      "description": "rent",
+      "date": ""
+    }
+  ]
 }
