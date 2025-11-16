@@ -69,6 +69,37 @@ class ApiTest(unittest.TestCase):
         j = rv.get_json()
         self.assertTrue('P1' in j.get('participants', []))
 
+    def test_report_settlement(self):
+        # realistic example: three people with uneven payments
+        rv = self.app.post('/api/participants', json={'names': ['Alice', 'Bob', 'Carol']})
+        self.assertEqual(rv.status_code, 200)
+        # Alice pays 120, Bob pays 30, Carol pays 0 -> total 150, per head 50
+        rv = self.app.post('/api/expense', json={'payer': 'Alice', 'amount': 120, 'description': 'Lodging', 'date': '2025-06-01'})
+        self.assertEqual(rv.status_code, 200)
+        rv = self.app.post('/api/expense', json={'payer': 'Bob', 'amount': 30, 'description': 'Dinner', 'date': '2025-06-02'})
+        self.assertEqual(rv.status_code, 200)
+
+        # request report
+        rv = self.app.get('/api/report')
+        self.assertEqual(rv.status_code, 200)
+        j = rv.get_json()
+        self.assertTrue(j.get('ok'))
+        # totals
+        self.assertEqual(j.get('total'), 150.0)
+        self.assertEqual(j.get('per_head'), 50.0)
+        summary = j.get('summary')
+        # summary contains paid, share and balance
+        self.assertAlmostEqual(summary['Alice']['paid'], 120.0)
+        self.assertAlmostEqual(summary['Alice']['balance'], 70.0)
+        self.assertAlmostEqual(summary['Bob']['paid'], 30.0)
+        self.assertAlmostEqual(summary['Bob']['balance'], -20.0)
+        self.assertAlmostEqual(summary['Carol']['paid'], 0.0)
+        self.assertAlmostEqual(summary['Carol']['balance'], -50.0)
+        # payments should settle debts: Bob->Alice 20, Carol->Alice 50 (order may vary)
+        payments = j.get('payments', [])
+        amounts = sorted([p['amount'] for p in payments])
+        self.assertEqual(amounts, [20.0, 50.0])
+
 
 if __name__ == '__main__':
     unittest.main()

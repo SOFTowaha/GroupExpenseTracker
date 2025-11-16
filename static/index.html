@@ -7,6 +7,21 @@
     <title>Group Expense Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Standardize checkboxes used in report controls */
+        .checkbox-input {
+            width: 18px;
+            height: 18px;
+            accent-color: rgba(var(--accent-rgb, 14, 124, 255), 1);
+            vertical-align: middle;
+            display: inline-block;
+        }
+
+        /* Ensure the right-side controls align to the end */
+        .controls-row.justify-end {
+            justify-content: flex-end;
+        }
+    </style>
 </head>
 
 <body>
@@ -70,24 +85,30 @@
             <section>
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-medium mb-2">Report</h2>
-                    <div class="controls-row">
-                        <button id="computeReport" class="btn btn-primary">Compute Settlement</button>
-                        <button id="copyReport" class="btn btn-ghost icon-btn" title="Copy report to clipboard">
-                            <svg id="copyIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                viewBox="0 0 24 24" fill="none" stroke="#0b1220" stroke-width="1.6"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span id="copyLabel">Copy</span>
-                        </button>
-                    </div>
+
                 </div>
-                <div class="flex items-center gap-3 mt-2">
-                    <label class="inline-flex items-center text-sm"><input id="includeDates" type="checkbox"
-                            class="mr-2">Include dates</label>
-                    <label class="inline-flex items-center text-sm"><input id="includeDesc" type="checkbox"
-                            class="mr-2">Include descriptions</label>
+                <div class="flex items-center justify-between">
+                    <div></div>
+                    <div class="text-right">
+                        <div class="controls-row mb-2 justify-end">
+                            <button id="computeReport" class="btn btn-primary">Compute Settlement</button>
+                            <button id="copyReport" class="btn btn-ghost icon-btn" title="Copy report to clipboard">
+                                <svg id="copyIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                    viewBox="0 0 24 24" fill="none" stroke="#0b1220" stroke-width="1.6"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span id="copyLabel">Copy</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-3 mt-2 justify-end">
+                            <label class="inline-flex items-center text-sm"><input id="includeDates" type="checkbox"
+                                    class="checkbox-input mr-2">Include dates</label>
+                            <label class="inline-flex items-center text-sm"><input id="includeDesc" type="checkbox"
+                                    class="checkbox-input mr-2">Include descriptions</label>
+                        </div>
+                    </div>
                 </div>
                 <div id="reportArea" class="text-sm text-gray-800 mt-3"></div>
             </section>

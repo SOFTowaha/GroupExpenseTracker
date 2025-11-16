@@ -10,6 +10,21 @@
 	--accent-2: rgba(var(--accent-2-rgb),1);
 	--muted: #6b7280;
 	--text-color: #072033;
+
+	/* extra palette for nicer text and button accents */
+	--text-strong: #031425;
+	--text-soft: #3b4852;
+	--muted-2: #94a3b8;
+	--glass-btn-bg: rgba(255,255,255,0.18);
+	--glass-btn-border: rgba(255,255,255,0.35);
+	--glass-btn-gloss: linear-gradient(180deg, rgba(255,255,255,0.25), rgba(255,255,255,0.06));
+	--glass-shadow: 0 10px 30px rgba(6,10,20,0.12);
+}
+
+/* Override Tailwind's bg-transparent to provide a 75% translucent white background
+   (uses rgba to avoid affecting child element opacity) */
+.bg-transparent{
+	background-color: rgba(255,255,255,0.45) !important;
 }
 
 body{
@@ -66,10 +81,42 @@ input[type="checkbox"]:checked::after{
 .inline-flex{display:inline-flex;align-items:center;gap:6px;color:#374151}
 
 /* Buttons */
-.btn{padding:9px 14px;border-radius:12px;border:1px solid rgba(12,18,25,0.06);background:linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.9));box-shadow:0 10px 28px rgba(6,10,20,0.06);cursor:pointer;transition:transform .14s ease,box-shadow .14s ease}
-.btn-primary{background:linear-gradient(180deg, rgba(var(--accent-rgb),1), rgba(8,90,235,0.95));color:white;border:none;box-shadow:0 14px 36px rgba(var(--accent-rgb),0.12)}
-.btn-success{background:linear-gradient(180deg,var(--accent-2),rgba(16,185,129,0.95));color:white;border:none}
-.btn-ghost{background:transparent;border:1px solid rgba(12,18,25,0.06)}
+/* Glassy button base */
+.btn{
+	padding:9px 14px;
+	border-radius:12px;
+	border:1px solid var(--glass-btn-border);
+	background: var(--glass-btn-bg);
+	background-image: var(--glass-btn-gloss);
+	color: var(--text-strong);
+	box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.06);
+	backdrop-filter: blur(6px) saturate(1.05);
+	-webkit-backdrop-filter: blur(6px) saturate(1.05);
+	cursor:pointer;
+	transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, opacity .12s ease;
+}
+.btn:hover{transform:translateY(-3px);box-shadow:0 18px 44px rgba(6,10,20,0.14)}
+.btn:active{transform:translateY(0)}
+
+/* Primary (accent) button - glassy colored tint */
+.btn-primary{
+	color: white;
+	border: 1px solid rgba(var(--accent-rgb),0.14);
+	background: linear-gradient(180deg, rgba(var(--accent-rgb),0.95), rgba(var(--accent-rgb),0.88));
+	box-shadow: 0 16px 40px rgba(var(--accent-rgb),0.14), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.btn-primary:hover{box-shadow:0 22px 50px rgba(var(--accent-rgb),0.17)}
+
+/* Success button (green) - glassy tint */
+.btn-success{
+	color: white;
+	border: 1px solid rgba(var(--accent-2-rgb),0.12);
+	background: linear-gradient(180deg, rgba(var(--accent-2-rgb),0.95), rgba(var(--accent-2-rgb),0.88));
+	box-shadow: 0 14px 36px rgba(var(--accent-2-rgb),0.12), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Ghost buttons remain translucent but with glass border */
+.btn-ghost{background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-soft)}
 .icon-btn{display:flex;align-items:center;gap:8px;padding:8px 10px}
 
 /* Form grid tweaks */
@@ -94,12 +141,13 @@ input[type="checkbox"]:checked::after{
 body::before{
     content: '';
     position: fixed; inset: 0; z-index: -2;
-    background-image: url('https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1800&q=80');
-    background-size: cover;
-    background-position: center 28%;
-    filter: blur(8px) saturate(1.05) contrast(1.02);
-    transform: translateZ(0);
-    opacity: 0.96;
+	/* darker, desaturated wallpaper with subtle vignette to improve contrast */
+	background-image: linear-gradient(rgba(6,10,20,0.42), rgba(6,10,20,0.22)), url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1800&q=80');
+	background-size: cover;
+	background-position: center 28%;
+	filter: blur(6px) saturate(0.92) contrast(0.95) grayscale(0.06);
+	transform: translateZ(0);
+	opacity: 0.96;
 }
 
 /* add an optional subtle grain overlay to make glass transparency visible */
@@ -107,7 +155,7 @@ body::after{
 	content: '';
 	position: fixed; inset: 0; z-index: -1; pointer-events: none;
 	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><filter id='g'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='2' /></filter><rect width='400' height='400' fill='rgba(255,255,255,0.02)' filter='url(%23g)' /></svg>");
-	opacity: 0.18; mix-blend-mode: overlay;
+	opacity: 0.12; mix-blend-mode: overlay;
 }
 
 /* winbar / traffic lights */
