@@ -43,7 +43,16 @@ def set_participants():
     data = load_data()
     payload = request.get_json() or {}
     names = payload.get("names") or []
+    # normalize and remove duplicates while preserving order
     names = [n.strip() for n in names if n and n.strip()]
+    # preserve order, remove exact duplicates
+    seen = set()
+    unique = []
+    for n in names:
+        if n not in seen:
+            seen.add(n)
+            unique.append(n)
+    names = unique
     data["participants"] = names
     # remove expenses by missing participants
     data["expenses"] = [e for e in data.get("expenses", []) if e.get("payer") in names]
@@ -120,7 +129,11 @@ def rename_participant():
     parts = data.get("participants", [])
     if old not in parts:
         return jsonify({"ok": False, "error": "old not found"}), 404
-    parts = [new if p == old else p for p in parts]
+    # replace only the first exact match to avoid renaming duplicates unintentionally
+    for idx, p in enumerate(parts):
+        if p == old:
+            parts[idx] = new
+            break
     data["participants"] = parts
     # update expenses
     for e in data.get("expenses", []):
