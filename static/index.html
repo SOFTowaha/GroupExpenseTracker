@@ -38,8 +38,21 @@
 
             <div class="field mb-4">
                 <label class="label">Event / Cost Name</label>
-                <div class="control"><input id="eventInput" type="text"
-                        placeholder="e.g. Weekend trip, Dinner with friends" class="input" /></div>
+                <div class="control" style="display:flex;gap:10px;align-items:end;">
+                    <input id="eventInput" type="text" placeholder="e.g. Weekend trip, Dinner with friends"
+                        class="input" style="flex:1" />
+                    <select id="currencySelect" class="input" style="max-width:140px">
+                        <option value="USD">USD — $</option>
+                        <option value="EUR">EUR — €</option>
+                        <option value="GBP">GBP — £</option>
+                        <option value="JPY">JPY — ¥</option>
+                        <option value="AUD">AUD — A$</option>
+                        <option value="CAD" selected>CAD — C$</option>
+                        <option value="INR">BDT — ৳</option>
+                        <option value="CNY">CNY — ¥</option>
+                    </select>
+                    <button id="eventSaveBtn" class="btn btn-ghost" title="Save / Edit event">Save</button>
+                </div>
             </div>
 
             <section class="mb-6">
@@ -116,6 +129,26 @@
         <!-- Undo / toast area -->
         <div id="undoBanner"
             class="fixed bottom-6 right-6 bg-gray-800 text-white px-4 py-2 rounded hidden items-center gap-3"></div>
+        <!-- Generic toast notifications -->
+        <div id="toastArea" class="fixed top-6 right-6 z-50 space-y-2"></div>
+
+        <!-- Modal (used for rename and edit) -->
+        <div id="modalOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div id="modal" class="glass p-4 z-10 max-w-md w-full">
+                <div class="flex items-center justify-between mb-3">
+                    <div id="modalTitle" class="font-semibold">Edit</div>
+                    <button id="modalClose" class="btn-ghost px-2 py-1 text-sm">×</button>
+                </div>
+                <form id="modalForm">
+                    <div id="modalBody"></div>
+                    <div class="flex justify-end gap-3 mt-4">
+                        <button type="button" id="modalCancel" class="btn btn-ghost">Cancel</button>
+                        <button type="submit" id="modalSave" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
         <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

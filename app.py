@@ -16,8 +16,18 @@ CORS(app)
 def load_data():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    return {"participants": [], "expenses": []}
+            d = json.load(f)
+            # ensure shape
+            if 'participants' not in d:
+                d['participants'] = []
+            if 'expenses' not in d:
+                d['expenses'] = []
+            if 'event' not in d:
+                d['event'] = ''
+            if 'currency' not in d:
+                d['currency'] = 'CAD'
+            return d
+    return {"participants": [], "expenses": [], "event": '', "currency": 'CAD'}
 
 
 def save_data(data):
@@ -193,6 +203,26 @@ def restore_item():
 @app.route("/api/data", methods=["GET"])
 def get_data():
     return jsonify(load_data())
+
+
+@app.route("/api/settings", methods=["GET", "POST"])
+def settings():
+    data = load_data()
+    if request.method == 'GET':
+        return jsonify({
+            'event': data.get('event', ''),
+            'currency': data.get('currency', 'CAD')
+        })
+    # POST -> update settings
+    payload = request.get_json() or {}
+    event = payload.get('event')
+    currency = payload.get('currency')
+    if event is not None:
+        data['event'] = str(event)
+    if currency is not None:
+        data['currency'] = str(currency)
+    save_data(data)
+    return jsonify({'ok': True, 'settings': {'event': data.get('event', ''), 'currency': data.get('currency', 'CAD')}})
 
 
 @app.route("/api/report", methods=["GET"])

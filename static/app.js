@@ -15,6 +15,22 @@ function el (id) {
   return document.getElementById (id);
 }
 
+// Toast helper
+function showToast (message, type = 'info', timeout = 3500) {
+  const area = el ('toastArea');
+  if (!area) return;
+  const t = document.createElement ('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<div class="msg">${message}</div>`;
+  area.appendChild (t);
+  // allow CSS transition
+  requestAnimationFrame (() => t.classList.add ('show'));
+  setTimeout (() => {
+    t.classList.remove ('show');
+    setTimeout (() => t.remove (), 220);
+  }, timeout);
+}
+
 async function refreshData () {
   const data = await api ('/data');
   let parts = (data && data.participants) || [];
@@ -84,6 +100,25 @@ async function refreshData () {
         .join ('') +
       '</div>';
   }
+
+  // restore saved event name and currency if present
+  const eventEl = el ('eventInput');
+  if (eventEl) eventEl.value = data.event || '';
+  const curEl = el ('currencySelect');
+  if (curEl) curEl.value = data.currency || 'CAD';
+}
+
+// save settings (event name, currency)
+async function saveSettings (settings) {
+  try {
+    const res = await api ('/settings', {
+      method: 'POST',
+      body: JSON.stringify (settings),
+    });
+    return res;
+  } catch (e) {
+    return {ok: false, error: 'network error'};
+  }
 }
 
 // Initialize Flatpickr for a nicer calendar UI and wire custom button
@@ -123,8 +158,9 @@ el ('saveParticipants').addEventListener ('click', async () => {
   if (!res || res.ok === false) {
     // store locally
     localStorage.setItem ('participants', JSON.stringify (names));
-    alert (
-      'Saved locally (server unreachable). Participants will be used in UI.'
+    showToast (
+      'Saved locally (server unreachable). Participants will be used in UI.',
+      'info'
     );
   } else {
     // also mirror to localStorage for resilience
@@ -134,11 +170,62 @@ el ('saveParticipants').addEventListener ('click', async () => {
   await refreshData ();
 });
 
+// Currency change saves immediately
+if (el ('currencySelect')) {
+  el ('currencySelect').addEventListener ('change', async () => {
+    const c = el ('currencySelect').value || 'USD';
+    await saveSettings ({currency: c});
+  });
+}
+
+// Event Save/Edit button: explicit save and toggle edit state
+function setEventButtonState () {
+  const eventEl = el ('eventInput');
+  const btn = el ('eventSaveBtn');
+  if (!eventEl || !btn) return;
+  if ((eventEl.value || '').trim () === '') {
+    eventEl.disabled = false;
+    btn.textContent = 'Save';
+  } else {
+    // if value exists, default to readonly mode until user clicks Edit
+    eventEl.disabled = true;
+    btn.textContent = 'Edit';
+  }
+}
+
+if (el ('eventSaveBtn')) {
+  el ('eventSaveBtn').addEventListener ('click', async () => {
+    const eventEl = el ('eventInput');
+    const btn = el ('eventSaveBtn');
+    if (!eventEl || !btn) return;
+    if (eventEl.disabled) {
+      // switch to edit mode
+      eventEl.disabled = false;
+      eventEl.focus ();
+      btn.textContent = 'Save';
+      return;
+    }
+    // save current value
+    const v = (eventEl.value || '').trim ();
+    const res = await saveSettings ({event: v});
+    if (!res || res.ok === false) {
+      showToast (res.error || 'Save failed', 'error');
+      return;
+    }
+    // saved: make readonly and switch to Edit
+    eventEl.disabled = true;
+    btn.textContent = 'Edit';
+  });
+}
+
+// Initialize button state after loading data
+document.addEventListener ('DOMContentLoaded', setEventButtonState);
+
 // clear local storage button (if present)
 if (el ('clearLocal')) {
   el ('clearLocal').addEventListener ('click', () => {
     localStorage.removeItem ('participants');
-    alert ('Local participants cleared');
+    showToast ('Local participants cleared', 'success');
     refreshData ();
   });
 }
@@ -148,15 +235,7 @@ el ('participantsList').addEventListener ('click', async ev => {
   const t = ev.target;
   if (t.classList.contains ('rename-participant')) {
     const old = t.dataset.name;
-    const nw = prompt ('Rename participant', old);
-    if (!nw || nw.trim () === '' || nw.trim () === old) return;
-    const res = await api ('/participants/rename', {
-      method: 'POST',
-      body: JSON.stringify ({old, new: nw.trim ()}),
-    });
-    if (!res || res.ok === false) return alert (res.error || 'Failed');
-    localStorage.setItem ('participants', JSON.stringify (res.participants));
-    await refreshData ();
+    openModal ('rename', {old});
   } else if (t.classList.contains ('delete-participant')) {
     const name = t.dataset.name;
     if (
@@ -176,7 +255,10 @@ el ('participantsList').addEventListener ('click', async ev => {
     const res = await api ('/participant/' + encodeURIComponent (name), {
       method: 'DELETE',
     });
-    if (!res || res.ok === false) return alert (res.error || 'Failed');
+    if (!res || res.ok === false) {
+      showToast (res.error || 'Failed', 'error');
+      return;
+    }
     localStorage.setItem ('participants', JSON.stringify (res.participants));
     showUndo (snapshot);
     await refreshData ();
@@ -188,8 +270,14 @@ el ('addExpense').addEventListener ('click', async () => {
   const amount = parseFloat (el ('amountInput').value || 0);
   const description = el ('descInput').value || '';
   const date = el ('dateInput').value || '';
-  if (!payer) return alert ('Select a payer');
-  if (!amount || amount <= 0) return alert ('Enter a positive amount');
+  if (!payer) {
+    showToast ('Select a payer', 'error');
+    return;
+  }
+  if (!amount || amount <= 0) {
+    showToast ('Enter a positive amount', 'error');
+    return;
+  }
   await api ('/expense', {
     method: 'POST',
     body: JSON.stringify ({payer, amount, description, date}),
@@ -213,7 +301,10 @@ el ('expensesList').addEventListener ('click', async ev => {
     const res = await api ('/expense/' + encodeURIComponent (id), {
       method: 'DELETE',
     });
-    if (!res || res.ok === false) return alert (res.error || 'Failed');
+    if (!res || res.ok === false) {
+      showToast (res.error || 'Failed', 'error');
+      return;
+    }
     showUndo (snapshot);
     await refreshData ();
   } else if (t.classList.contains ('edit-expense')) {
@@ -221,26 +312,143 @@ el ('expensesList').addEventListener ('click', async ev => {
     // fetch current data
     const data = await api ('/data');
     const expense = (data.expenses || []).find (e => e.id === id);
-    if (!expense) return alert ('Expense not found');
-    const newPayer = prompt ('Payer', expense.payer) || expense.payer;
-    const newAmount =
-      prompt ('Amount', String (parseFloat (expense.amount).toFixed (2))) ||
-      expense.amount;
-    const newDesc =
-      prompt ('Description', expense.description || '') || expense.description;
-    const newDate =
-      prompt ('Date (YYYY-MM-DD)', expense.date || '') || expense.date;
+    if (!expense) {
+      showToast ('Expense not found', 'error');
+      return;
+    }
+    openModal ('editExpense', {expense});
+  }
+});
+
+/* Modal logic */
+const modalOverlay = el ('modalOverlay');
+const modal = el ('modal');
+const modalTitle = el ('modalTitle');
+const modalBody = el ('modalBody');
+const modalForm = el ('modalForm');
+let modalState = null; // {type, data}
+
+function openModal (type, data) {
+  modalState = {type, data};
+  modalOverlay.classList.remove ('hidden');
+  if (type === 'rename') {
+    modalTitle.textContent = 'Rename Participant';
+    modalBody.innerHTML = `
+      <div class="field">
+        <label class="label">Old name</label>
+        <div class="control"><input id="modalOldName" class="input" readonly /></div>
+      </div>
+      <div class="field">
+        <label class="label">New name</label>
+        <div class="control"><input id="modalNewName" class="input" /></div>
+      </div>
+    `;
+    el ('modalOldName').value = data.old;
+    el ('modalNewName').focus ();
+  } else if (type === 'editExpense') {
+    modalTitle.textContent = 'Edit Expense';
+    // build payer select options dynamically
+    const parts = (async () => {
+      const d = await api ('/data');
+      return d.participants || [];
+    }) ();
+    modalBody.innerHTML = `
+      <div class="field">
+        <label class="label">Payer</label>
+        <div class="control"><select id="modalPayer" class="input"></select></div>
+      </div>
+      <div class="field">
+        <label class="label">Amount</label>
+        <div class="control"><input id="modalAmount" class="input" /></div>
+      </div>
+      <div class="field">
+        <label class="label">Description</label>
+        <div class="control"><input id="modalDesc" class="input" /></div>
+      </div>
+      <div class="field">
+        <label class="label">Date</label>
+        <div class="control date-wrap"><input id="modalDate" type="text" class="input" /></div>
+      </div>
+    `;
+    // populate form after participants fetched
+    parts.then (ps => {
+      const sel = el ('modalPayer');
+      sel.innerHTML = '';
+      ps.forEach (p => {
+        const o = document.createElement ('option');
+        o.value = p;
+        o.textContent = p;
+        sel.appendChild (o);
+      });
+      // set values
+      const e = data.expense;
+      el ('modalPayer').value = e.payer;
+      el ('modalAmount').value = parseFloat (e.amount).toFixed (2);
+      el ('modalDesc').value = e.description || '';
+      el ('modalDate').value = e.date || '';
+      // initialize flatpickr on modalDate
+      if (window.flatpickr) {
+        try {
+          if (el ('modalDate')._flatpickr)
+            el ('modalDate')._flatpickr.destroy ();
+          flatpickr (el ('modalDate'), {
+            altInput: true,
+            altFormat: 'F j, Y',
+            dateFormat: 'Y-m-d',
+            allowInput: true,
+          });
+        } catch (err) {}
+      }
+    });
+  }
+}
+
+function closeModal () {
+  modalOverlay.classList.add ('hidden');
+  modalBody.innerHTML = '';
+  modalState = null;
+}
+
+// modal event handlers
+el ('modalClose').addEventListener ('click', closeModal);
+el ('modalCancel').addEventListener ('click', closeModal);
+modalForm.addEventListener ('submit', async function (ev) {
+  ev.preventDefault ();
+  if (!modalState) return closeModal ();
+  if (modalState.type === 'rename') {
+    const old = el ('modalOldName').value;
+    const nw = el ('modalNewName').value.trim ();
+    if (!nw || nw === old) {
+      showToast ('Enter a different name', 'error');
+      return;
+    }
+    const res = await api ('/participants/rename', {
+      method: 'POST',
+      body: JSON.stringify ({old, new: nw}),
+    });
+    if (!res || res.ok === false) {
+      showToast (res.error || 'Failed', 'error');
+      return;
+    }
+    localStorage.setItem ('participants', JSON.stringify (res.participants));
+    await refreshData ();
+    closeModal ();
+  } else if (modalState.type === 'editExpense') {
+    const id = modalState.data.expense.id;
+    const payer = el ('modalPayer').value;
+    const amount = el ('modalAmount').value;
+    const description = el ('modalDesc').value;
+    const date = el ('modalDate').value;
     const res = await api ('/expense/' + encodeURIComponent (id), {
       method: 'PUT',
-      body: JSON.stringify ({
-        payer: newPayer,
-        amount: newAmount,
-        description: newDesc,
-        date: newDate,
-      }),
+      body: JSON.stringify ({payer, amount, description, date}),
     });
-    if (!res || res.ok === false) return alert (res.error || 'Failed');
+    if (!res || res.ok === false) {
+      showToast (res.error || 'Failed', 'error');
+      return;
+    }
     await refreshData ();
+    closeModal ();
   }
 });
 
@@ -255,6 +463,21 @@ el ('computeReport').addEventListener ('click', async () => {
   const eventName = el ('eventInput') && el ('eventInput').value
     ? el ('eventInput').value.trim ()
     : '';
+  // currency formatting
+  const currencyCode =
+    (el ('currencySelect') && el ('currencySelect').value) || 'CAD';
+  const currencyMap = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    JPY: '¥',
+    AUD: 'A$',
+    CAD: 'C$',
+    INR: '₹',
+    CNY: '¥',
+  };
+  const currencySym = currencyMap[currencyCode] || '';
+  const fmt = v => `${currencySym}${parseFloat (v).toFixed (2)}`;
   const includeDates = el ('includeDates')
     ? !!el ('includeDates').checked
     : false;
@@ -266,30 +489,30 @@ el ('computeReport').addEventListener ('click', async () => {
     ? allData.expenses
     : [];
 
-  // Build a friendly description
+  // Build a concise report layout: title + totals, summary table, payments, optional expenses
   const title = eventName ? `${eventName} — Settlement` : 'Settlement Summary';
-  const summaryText = `Total: ${r.total.toFixed (2)} | Per head: ${r.per_head.toFixed (2)}`;
+  const totalsLine = `Total: ${fmt (r.total)} · Per head: ${fmt (r.per_head)}`;
 
   let html = `<div class="report-card">
     <div class="report-header">
       <div>
         <div class="font-semibold">${title}</div>
-        <div class="text-xs text-gray-500">${summaryText}</div>
+        <div class="text-xs text-gray-500">${totalsLine}</div>
       </div>
       <div class="report-actions"></div>
-    </div>`;
+    </div>
 
-  html += '<div class="report-summary">';
-  html += '<h3 class="mt-2">Summary</h3>';
-  html +=
-    '<ul class="report-list">' +
-    Object.entries (r.summary)
-      .map (
-        ([p, s]) =>
-          `<li>${p}: paid ${s.paid.toFixed (2)}, share ${s.share.toFixed (2)}, balance ${s.balance.toFixed (2)}</li>`
-      )
-      .join ('') +
-    '</ul>';
+    <div class="report-summary">
+      <h3 class="mt-2">Summary</h3>
+      <table style="width:100%;border-collapse:collapse;text-align:left">
+        <thead><tr><th style="padding:6px 8px;color:var(--muted)">Person</th><th style="padding:6px 8px;color:var(--muted)">Paid</th><th style="padding:6px 8px;color:var(--muted)">Share</th><th style="padding:6px 8px;color:var(--muted)">Balance</th></tr></thead>
+        <tbody>`;
+
+  Object.entries (r.summary).forEach (([p, s]) => {
+    html += `<tr><td style="padding:8px">${p}</td><td style="padding:8px">${fmt (s.paid)}</td><td style="padding:8px">${fmt (s.share)}</td><td style="padding:8px">${fmt (s.balance)}</td></tr>`;
+  });
+
+  html += `</tbody></table>`;
 
   if (!r.payments || r.payments.length === 0) {
     html += '<p class="mt-3">All settled — no payments needed.</p>';
@@ -298,7 +521,7 @@ el ('computeReport').addEventListener ('click', async () => {
     html +=
       '<ul class="report-list">' +
       r.payments
-        .map (p => `<li>${p.from} → ${p.to}: ${p.amount.toFixed (2)}</li>`)
+        .map (p => `<li>${p.from} → ${p.to}: ${fmt (p.amount)}</li>`)
         .join ('') +
       '</ul>';
   }
@@ -309,7 +532,7 @@ el ('computeReport').addEventListener ('click', async () => {
     html += '<ul class="report-list">';
     expenses.forEach (e => {
       const parts = [];
-      parts.push (`${e.payer} paid ${parseFloat (e.amount).toFixed (2)}`);
+      parts.push (`${e.payer} paid ${fmt (e.amount)}`);
       if (includeDates && e.date) parts.push (`on ${e.date}`);
       if (includeDesc && e.description) parts.push (`(${e.description})`);
       html += `<li>${parts.join (' ')}</li>`;
@@ -321,11 +544,11 @@ el ('computeReport').addEventListener ('click', async () => {
   area.innerHTML = html;
 
   // Also prepare a plain-text version for clipboard
-  let txt = `${title}\n${summaryText}\n\nSummary:\n`;
+  let txt = `${title}\n${totalsLine}\n\nSummary:\n`;
   txt += Object.entries (r.summary)
     .map (
       ([p, s]) =>
-        `${p}: paid ${s.paid.toFixed (2)}, share ${s.share.toFixed (2)}, balance ${s.balance.toFixed (2)}`
+        `${p}: paid ${fmt (s.paid)}, share ${fmt (s.share)}, balance ${fmt (s.balance)}`
     )
     .join ('\n');
   txt += '\n\n';
@@ -335,14 +558,14 @@ el ('computeReport').addEventListener ('click', async () => {
     txt +=
       'Payments:\n' +
       r.payments
-        .map (p => `${p.from} -> ${p.to}: ${p.amount.toFixed (2)}`)
+        .map (p => `${p.from} -> ${p.to}: ${fmt (p.amount)}`)
         .join ('\n') +
       '\n';
 
   if (expenses && expenses.length) {
     txt += '\nExpenses:\n';
     expenses.forEach (e => {
-      let line = `${e.payer} paid ${parseFloat (e.amount).toFixed (2)}`;
+      let line = `${e.payer} paid ${fmt (e.amount)}`;
       if (includeDates && e.date) line += ` on ${e.date}`;
       if (includeDesc && e.description) line += ` (${e.description})`;
       txt += line + '\n';
@@ -364,7 +587,10 @@ if (el ('copyReport')) {
   el ('copyReport').addEventListener ('click', async ev => {
     const btn = ev.currentTarget;
     const text = btn.dataset.cliptext || '';
-    if (!text) return alert ('Nothing to copy — generate the report first');
+    if (!text) {
+      showToast ('Nothing to copy — generate the report first', 'error');
+      return;
+    }
     try {
       await navigator.clipboard.writeText (text);
       btn.classList.add ('copied');
@@ -374,7 +600,10 @@ if (el ('copyReport')) {
         el ('copyLabel').textContent = 'Copy';
       }, 2400);
     } catch (err) {
-      alert ('Copy failed — your browser may block clipboard access.');
+      showToast (
+        'Copy failed — your browser may block clipboard access.',
+        'error'
+      );
     }
   });
 }
@@ -399,8 +628,10 @@ function showUndo (snapshot) {
         method: 'POST',
         body: JSON.stringify (lastSnapshot),
       });
-      if (!res || res.ok === false)
-        return alert (res.error || 'Restore failed');
+      if (!res || res.ok === false) {
+        showToast (res.error || 'Restore failed', 'error');
+        return;
+      }
       lastSnapshot = null;
       clearTimeout (undoTimer);
       b.classList.add ('hidden');

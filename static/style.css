@@ -179,7 +179,7 @@ h1{margin-top:0}
 
 textarea{width:100%;height:110px;padding:12px;border-radius:12px;background: rgba(255,255,255,0.48);border:1px solid rgba(0,0,0,0.04);box-shadow: inset 0 1px 0 rgba(255,255,255,0.72)}
 .row{display:flex;gap:12px;align-items:center;margin:8px 0}
-label{width:120px}
+label{width:180px}
 
 /* Inputs / selects styling as frosted controls */
 input, select, textarea{
@@ -301,5 +301,22 @@ section{margin-bottom:20px}
 	.glass{padding:18px}
 	textarea{height:90px}
 }
+
+/* Toast notifications */
+#toastArea{pointer-events:none}
+.toast{pointer-events:auto;min-width:200px;max-width:360px;padding:10px 14px;border-radius:10px;color:white;box-shadow:0 10px 30px rgba(6,10,20,0.18);opacity:0;transform:translateY(-8px);transition:opacity .18s ease,transform .18s ease}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.info{background:linear-gradient(180deg,rgba(14,124,255,0.95),rgba(8,90,235,0.9))}
+.toast.success{background:linear-gradient(180deg,rgba(34,197,94,0.95),rgba(16,185,129,0.95))}
+.toast.error{background:linear-gradient(180deg,rgba(220,38,38,0.95),rgba(185,28,28,0.95))}
+.toast .title{font-weight:600;margin-bottom:4px}
+.toast .msg{font-size:0.9rem;opacity:0.95}
+
+/* Modal styles */
+#modalOverlay{background:rgba(6,10,20,0.36)}
+#modal{border-radius:12px;box-shadow:0 30px 80px rgba(6,10,20,0.36);}
+#modal .modal-backdrop{position:absolute;inset:0;border-radius:12px}
+#modalBody .field{margin-bottom:0.8rem}
+#modal .btn-ghost{background:transparent}
 
 
