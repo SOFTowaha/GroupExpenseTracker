@@ -1,35 +1,4 @@
 {
-  "participants": [
-    "Sadia",
-    "Shorup",
-    "Haris",
-    "Syed",
-    "Beauty"
-  ],
-  "expenses": [
-    {
-      "payer": "Sadia",
-      "amount": 2.0,
-      "description": "22",
-      "date": ""
-    },
-    {
-      "payer": "Shorup",
-      "amount": 22.0,
-      "description": "2",
-      "date": ""
-    },
-    {
-      "payer": "Syed",
-      "amount": 3.0,
-      "description": "",
-      "date": ""
-    },
-    {
-      "payer": "Haris",
-      "amount": 4.0,
-      "description": "",
-      "date": ""
-    }
-  ]
+  "participants": [],
+  "expenses": []
 }

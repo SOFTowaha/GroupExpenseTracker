@@ -1,0 +1,9 @@
+.expenseTracker/
+.venv/
+__pycache__/
+*.pyc
+data.json
+.env
+.DS_Store
+node_modules/
+*.swp

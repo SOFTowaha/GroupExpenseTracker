@@ -27,5 +27,5 @@ How to use:
 - Click `Compute Settlement` to view per-head cost, per-person summary and payment list.
 
 Notes:
-- Data is stored in `data.json` in the project folder.
+- Data is stored in `data.json` in the project folder. This file is intentionally ignored by Git (see `.gitignore`) because it contains local state — do not commit it. Back it up if you need persistence across machines.
 - This is a minimal demo; feel free to ask for features (CSV import, per-item split, multi-event history).
