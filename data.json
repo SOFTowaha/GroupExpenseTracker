@@ -1,16 +1,16 @@
 {
   "participants": [
-    "john",
-    "jenny",
-    "syed",
+    "John",
+    "Jenny",
+    "Syed",
     "Lia",
-    "maria",
-    "maysoon"
+    "Maria",
+    "Debora"
   ],
   "expenses": [
     {
       "id": "dab2b766-3302-4d4a-aea7-d020e9b325fb",
-      "payer": "syed",
+      "payer": "Syed",
       "amount": 23.0,
       "description": "tent",
       "date": "2025-11-11"
@@ -20,6 +20,13 @@
       "payer": "Lia",
       "amount": 344.0,
       "description": "rent",
+      "date": ""
+    },
+    {
+      "id": "3d6985bd-09dc-48b2-aba7-dec76cb652f4",
+      "payer": "John",
+      "amount": 23.0,
+      "description": "Food",
       "date": ""
     }
   ]

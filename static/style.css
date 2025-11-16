@@ -31,12 +31,26 @@ body{
 .shadow-floating{box-shadow: 0 40px 90px rgba(6,10,20,0.22);}
 
 /* wallpaper / macOS-like background */
+/* stronger wallpaper: layered gradients with subtle texture to mimic macOS wallpaper */
 body::before{
 	content: '';
-	position: fixed; inset: 0; z-index: -1;
-	background: radial-gradient(1200px 600px at 10% 20%, rgba(96,160,255,0.12), transparent 20%), radial-gradient(1000px 500px at 90% 80%, rgba(120,220,140,0.06), transparent 18%), linear-gradient(180deg,#e8f0ff 0%, #f4fff4 100%);
-	filter: blur(18px) saturate(1.05);
+	position: fixed; inset: 0; z-index: -2;
+	background-image:
+		radial-gradient(800px 400px at 10% 18%, rgba(96,160,255,0.14), transparent 12%),
+		radial-gradient(900px 480px at 88% 82%, rgba(80,200,140,0.08), transparent 10%),
+		linear-gradient(180deg,#e8f0ff 0%, #f1fff4 100%);
+	background-size: cover;
+	filter: blur(20px) saturate(1.06) contrast(1.02);
 	transform: translateZ(0);
+	opacity: 0.98;
+}
+
+/* add an optional subtle grain overlay to make glass transparency visible */
+body::after{
+	content: '';
+	position: fixed; inset: 0; z-index: -1; pointer-events: none;
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><filter id='g'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='2' /></filter><rect width='400' height='400' fill='rgba(255,255,255,0.02)' filter='url(%23g)' /></svg>");
+	opacity: 0.18; mix-blend-mode: overlay;
 }
 
 /* winbar / traffic lights */

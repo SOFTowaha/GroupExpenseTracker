@@ -251,9 +251,20 @@ el ('computeReport').addEventListener ('click', async () => {
     area.innerHTML = `<div class="error">${r.error || 'Error'}</div>`;
     return;
   }
+
   const eventName = el ('eventInput') && el ('eventInput').value
     ? el ('eventInput').value.trim ()
     : '';
+  const includeDates = el ('includeDates')
+    ? !!el ('includeDates').checked
+    : false;
+  const includeDesc = el ('includeDesc') ? !!el ('includeDesc').checked : false;
+
+  // fetch raw expenses so we can optionally show dates/descriptions
+  const allData = await api ('/data');
+  const expenses = allData && Array.isArray (allData.expenses)
+    ? allData.expenses
+    : [];
 
   // Build a friendly description
   const title = eventName ? `${eventName} — Settlement` : 'Settlement Summary';
@@ -292,6 +303,20 @@ el ('computeReport').addEventListener ('click', async () => {
       '</ul>';
   }
 
+  // Optionally include the list of expenses with date/description
+  if (expenses && expenses.length) {
+    html += '<h3 class="mt-3">Expenses</h3>';
+    html += '<ul class="report-list">';
+    expenses.forEach (e => {
+      const parts = [];
+      parts.push (`${e.payer} paid ${parseFloat (e.amount).toFixed (2)}`);
+      if (includeDates && e.date) parts.push (`on ${e.date}`);
+      if (includeDesc && e.description) parts.push (`(${e.description})`);
+      html += `<li>${parts.join (' ')}</li>`;
+    });
+    html += '</ul>';
+  }
+
   html += '</div></div>';
   area.innerHTML = html;
 
@@ -313,6 +338,16 @@ el ('computeReport').addEventListener ('click', async () => {
         .map (p => `${p.from} -> ${p.to}: ${p.amount.toFixed (2)}`)
         .join ('\n') +
       '\n';
+
+  if (expenses && expenses.length) {
+    txt += '\nExpenses:\n';
+    expenses.forEach (e => {
+      let line = `${e.payer} paid ${parseFloat (e.amount).toFixed (2)}`;
+      if (includeDates && e.date) line += ` on ${e.date}`;
+      if (includeDesc && e.description) line += ` (${e.description})`;
+      txt += line + '\n';
+    });
+  }
 
   // store generated text on copy button for use by clipboard action
   const copyBtn = el ('copyReport');
