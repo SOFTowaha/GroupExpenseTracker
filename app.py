@@ -305,8 +305,26 @@ def report():
             debtors.append({"person": p, "amount": -bal})
 
     # Prefer matching largest amounts first (reduce small cross-payments)
-    creditors.sort(key=lambda x: x["amount"], reverse=True)
     debtors.sort(key=lambda x: x["amount"], reverse=True)
+    # prioritize the person who paid the most: put them first among creditors if they're a creditor
+    # determine highest payer by paid_cents
+    top_payer = None
+    if paid_cents:
+        top_payer = max(paid_cents.items(), key=lambda kv: kv[1])[0]
+        if paid_cents.get(top_payer, 0) <= 0:
+            top_payer = None
+
+    # sort other creditors by amount desc, but place top_payer first if present
+    others = [c for c in creditors if c["person"] != top_payer]
+    others.sort(key=lambda x: x["amount"], reverse=True)
+    prioritized = []
+    if top_payer:
+        for c in creditors:
+            if c["person"] == top_payer:
+                prioritized.append(c)
+                break
+    prioritized.extend(others)
+    creditors = prioritized
 
     payments = []
     i = 0
