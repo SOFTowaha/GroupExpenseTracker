@@ -473,7 +473,7 @@ el ('computeReport').addEventListener ('click', async () => {
     JPY: '¥',
     AUD: 'A$',
     CAD: 'C$',
-    INR: '₹',
+    INR: '৳',
     CNY: '¥',
   };
   const currencySym = currencyMap[currencyCode] || '';

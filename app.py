@@ -233,14 +233,77 @@ def report():
     n = len(participants)
     if n == 0:
         return jsonify({"ok": False, "error": "no participants"}), 400
+
+    # Sum totals in Decimal, then convert to integer cents to avoid fractional-cent issues
     totals = {p: Decimal('0.00') for p in participants}
     total_all = Decimal('0.00')
     for e in expenses:
         amt = to_decimal(e.get("amount", 0))
         totals[e["payer"]] += amt
         total_all += amt
-    per_head = quant(total_all / Decimal(n))
-    balances = {p: quant(totals[p] - per_head) for p in participants}
+
+    # Quantize total to cents and convert to integer cents
+    total_all = quant(total_all)
+    total_cents = int((total_all * Decimal('100')).to_integral_value(rounding=ROUND_HALF_UP))
+
+    # Per-head integer cents, distribute remainder deterministically by participant name order
+    per_head_cents = total_cents // n
+    remainder = total_cents % n
+    ordered = sorted(participants)
+    # Build paid/share/balance in cents
+    paid_cents = {}
+    for p in participants:
+        p_total = quant(totals.get(p, Decimal('0.00')))
+        paid_cents[p] = int((p_total * Decimal('100')).to_integral_value(rounding=ROUND_HALF_UP))
+
+    share_cents = {}
+    for idx, p in enumerate(ordered):
+        extra = 1 if idx < remainder else 0
+        share_cents[p] = per_head_cents + extra
+
+    # compute balances in cents: positive means person is creditor (is owed money)
+    balances_cents = {p: paid_cents.get(p, 0) - share_cents.get(p, per_head_cents) for p in participants}
+
+    # Prepare creditors and debtors (amounts positive ints)
+    creditors = []
+    debtors = []
+    for p, bal in balances_cents.items():
+        if bal > 0:
+            creditors.append({"person": p, "amount": bal})
+        elif bal < 0:
+            debtors.append({"person": p, "amount": -bal})
+
+    # Prefer matching largest amounts first (reduce small cross-payments)
+    creditors.sort(key=lambda x: x["amount"], reverse=True)
+    debtors.sort(key=lambda x: x["amount"], reverse=True)
+
+    payments = []
+    i = 0
+    j = 0
+    while i < len(debtors) and j < len(creditors):
+        d = debtors[i]
+        c = creditors[j]
+        take = min(d["amount"], c["amount"])  # in cents
+        payments.append({"from": d["person"], "to": c["person"], "amount": float(Decimal(take) / Decimal('100'))})
+        d["amount"] -= take
+        c["amount"] -= take
+        if d["amount"] == 0:
+            i += 1
+        if c["amount"] == 0:
+            j += 1
+
+    # Build summary (convert cents back to dollars)
+    summary = {}
+    for p in participants:
+        paid = float(Decimal(paid_cents.get(p, 0)) / Decimal('100'))
+        share = float(Decimal(share_cents.get(p, per_head_cents)) / Decimal('100'))
+        balance = float(Decimal(balances_cents.get(p, 0)) / Decimal('100'))
+        summary[p] = {"paid": paid, "share": share, "balance": balance}
+
+    per_head = float(Decimal(per_head_cents) / Decimal('100'))
+    total = float(Decimal(total_cents) / Decimal('100'))
+
+    return jsonify({"ok": True, "total": total, "per_head": per_head, "summary": summary, "payments": payments})
 
     # Prepare creditors and debtors
     creditors = []
