@@ -1,7 +1,12 @@
+// Base URL for backend API. Override by setting `window.API_BASE` in the page
+const API_BASE = (window.API_BASE || 'https://groupexpensetracker.onrender.com')
+  .replace (/\/$/, '');
+
 async function api (path, opts = {}) {
   try {
+    const url = path.startsWith ('http') ? path : `${API_BASE}/api${path}`;
     const res = await fetch (
-      '/api' + path,
+      url,
       Object.assign ({headers: {'Content-Type': 'application/json'}}, opts)
     );
     return await res.json ();

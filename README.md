@@ -2,6 +2,8 @@
 
 Simple app to track group expenses, compute per-head share and minimal payments to settle.
 
+Live demo (backend hosted): https://groupexpensetracker.onrender.com
+
 Run (macOS / zsh):
 
 1. Create a virtualenv and install requirements
