@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Group Expense Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Standardize checkboxes used in report controls */
+        .checkbox-input {
+            width: 18px;
+            height: 18px;
+            accent-color: rgba(var(--accent-rgb, 14, 124, 255), 1);
+            vertical-align: middle;
+            display: inline-block;
+        }
+
+        /* Ensure the right-side controls align to the end */
+        .controls-row.justify-end {
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="max-w-3xl mx-auto p-0 bg-transparent rounded-lg shadow-floating glass-window">
+        <div class="winbar">
+            <div class="traffic">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+            </div>
+        </div>
+        <div class="p-6 app-content">
+            <h1 class="app-title">Group Expense Tracker</h1>
+
+            <div class="field mb-4">
+                <label class="label">Event / Cost Name</label>
+                <div class="control" style="display:flex;gap:10px;align-items:end;">
+                    <input id="eventInput" type="text" placeholder="e.g. Weekend trip, Dinner with friends"
+                        class="input" style="flex:1" />
+                    <select id="currencySelect" class="input" style="max-width:140px">
+                        <option value="USD">USD — $</option>
+                        <option value="EUR">EUR — €</option>
+                        <option value="GBP">GBP — £</option>
+                        <option value="JPY">JPY — ¥</option>
+                        <option value="AUD">AUD — A$</option>
+                        <option value="CAD" selected>CAD — C$</option>
+                        <option value="INR">BDT — ৳</option>
+                        <option value="CNY">CNY — ¥</option>
+                    </select>
+                    <button id="eventSaveBtn" class="btn btn-ghost" title="Save / Edit event">Save</button>
+                </div>
+            </div>
+
+            <section class="mb-6">
+                <h2 class="section-title">Participants</h2>
+                <div class="field">
+                    <div class="control"><textarea id="participantsInput" placeholder="Enter one name per line"
+                            class="input textarea"></textarea></div>
+                </div>
+                <div class="controls-row mb-3">
+                    <button id="saveParticipants" class="btn btn-primary">Save Participants</button>
+                    <button id="clearLocal" class="btn btn-ghost">Clear Local</button>
+                </div>
+                <div id="participantsList" class="list muted"></div>
+            </section>
+
+            <section class="mb-6">
+                <h2 class="section-title">Add Expense</h2>
+                <div class="grid grid-cols-2 gap-3 items-end form-grid">
+                    <div>
+                        <label class="label">Who paid?</label>
+                        <div class="control"><select id="payerSelect" class="input"></select></div>
+                    </div>
+                    <div>
+                        <label class="label">Amount</label>
+                        <div class="control"><input id="amountInput" type="number" step="0.01" placeholder="e.g. 4.50"
+                                class="input" /></div>
+                    </div>
+                    <div>
+                        <label class="label">Description</label>
+                        <div class="control"><input id="descInput" type="text" class="input" /></div>
+                    </div>
+                    <div>
+                        <label class="label">Date</label>
+                        <div class="control date-wrap"><input id="dateInput" type="date" class="input" /></div>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="label">Split between</label>
+                        <div class="flex items-center gap-2 mb-1">
+                            <div id="splitSelect" class="control flex flex-wrap gap-2"></div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <button id="selectAllSplit" type="button" class="btn btn-ghost text-sm">Select All</button>
+                            <button id="clearSplit" type="button" class="btn btn-ghost text-sm">Clear</button>
+                            <div class="text-xs text-gray-500">Select who shares this expense (default: everyone)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button id="addExpense" class="btn btn-success">Add Expense</button>
+                </div>
+                <div id="expensesList" class="mt-3 text-sm text-gray-800"></div>
+            </section>
+
+            <section>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-medium mb-2">Report</h2>
+
+                </div>
+                <div class="flex items-center justify-between">
+                    <div></div>
+                    <div class="text-right">
+                        <div class="controls-row mb-2 justify-end">
+                            <button id="computeReport" class="btn btn-primary">Compute Settlement</button>
+                            <button id="copyReport" class="btn btn-ghost icon-btn" title="Copy report to clipboard">
+                                <svg id="copyIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                    viewBox="0 0 24 24" fill="none" stroke="#0b1220" stroke-width="1.6"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span id="copyLabel">Copy</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-3 mt-2 justify-end">
+                            <label class="inline-flex items-center text-sm"><input id="includeDates" type="checkbox"
+                                    class="checkbox-input mr-2">Include dates</label>
+                            <label class="inline-flex items-center text-sm"><input id="includeDesc" type="checkbox"
+                                    class="checkbox-input mr-2">Include descriptions</label>
+                        </div>
+                    </div>
+                </div>
+                <div id="reportArea" class="text-sm text-gray-800 mt-3"></div>
+            </section>
+        </div>
+        <!-- Undo / toast area -->
+        <div id="undoBanner"
+            class="fixed bottom-6 right-6 bg-gray-800 text-white px-4 py-2 rounded hidden items-center gap-3"></div>
+        <!-- Generic toast notifications -->
+        <div id="toastArea" class="fixed top-6 right-6 z-50 space-y-2"></div>
+
+        <!-- Modal (used for rename and edit) -->
+        <div id="modalOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div id="modal" class="glass p-4 z-10 max-w-md w-full">
+                <div class="flex items-center justify-between mb-3">
+                    <div id="modalTitle" class="font-semibold">Edit</div>
+                    <button id="modalClose" class="btn-ghost px-2 py-1 text-sm">×</button>
+                </div>
+                <form id="modalForm">
+                    <div id="modalBody"></div>
+                    <div class="flex justify-end gap-3 mt-4">
+                        <button type="button" id="modalCancel" class="btn btn-ghost">Cancel</button>
+                        <button type="submit" id="modalSave" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        <script src="/static/app.js"></script>
+</body>
+
+</html>
